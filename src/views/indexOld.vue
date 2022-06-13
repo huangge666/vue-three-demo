@@ -43,18 +43,6 @@
              alt=""
              @click="close()">
       </div>
-      <div class="select">
-        <el-select v-model="selectModelIndex"
-                   placeholder="请选择"
-                   @change="modelSelect"
-                   style="display: block">
-          <el-option v-for="(item,index) in models"
-                     :key="item.name"
-                     :label="item.name"
-                     :value="index">
-          </el-option>
-        </el-select>
-      </div>
     </div>
 
     <Tutorial v-model="dialogVisible"></Tutorial>
@@ -62,16 +50,19 @@
 </template>
 
 <script>
+import { getUrlParam } from "@/tools/utils.js";
+
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 
 import Tutorial from "@/components/tutorial/index.vue";
 
 export default {
-  name: "Select",
+  name: "Home",
   components: {
     Tutorial,
   },
@@ -121,14 +112,38 @@ export default {
         title: "",
         subTitle: "这是一个古董",
       },
+      // 重新加载次数
+      loadingCount: 0,
     };
   },
   methods: {
+    async getDataInfo() {},
+    randomModel(force = false) {
+      const temp = [...this.models];
+      let index = getUrlParam("index");
+      if (!index || force) {
+        index = Math.floor(Math.random() * temp.length - 1);
+      }
+      if (index >= temp.length) {
+        this.$message.warning(
+          `index不能超过${temp.length - 1}，2秒后将进行随机展示某个物品`
+        );
+        const loading = this.$loading({
+          lock: true,
+          text: "Loading",
+          spinner: "el-icon-loading",
+          background: "rgba(0, 0, 0, 0.7)",
+        });
+        setTimeout(() => {
+          loading.close();
+          this.randomModel(true);
+        }, 2000);
+        return;
+      }
+      this.modelLoader(temp[index]);
+    },
     close() {
       this.$message.success("关闭");
-    },
-    modelSelect(e) {
-      this.modelLoader(this.models[e]);
     },
     async init() {
       this.setScene();
@@ -136,7 +151,7 @@ export default {
       this.setCamera();
       this.addControls();
       this.addLight();
-      this.modelLoader(this.models[0]);
+      this.randomModel();
       //添加辅助面板
       this.animation();
     },
@@ -144,6 +159,10 @@ export default {
       const scene = new THREE.Scene();
       // scene.background = new THREE.TextureLoader().load(BG);
       this.Scene = scene;
+
+      //显示三维坐标系
+      // var axis = new THREE.AxisHelper(3);
+      // scene.add(axis);
     },
     setRenderer() {
       const element = document.getElementById("container");
@@ -155,25 +174,12 @@ export default {
       // 设置渲染器的像素比例，按照设备
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(element.clientWidth, element.clientHeight); // 设置渲染区域尺寸
-      // 开启阴影
-      // renderer.shadowMap.enabled = true;
-      // renderer.outputEncoding = THREE.sRGBEncoding;
-
-      //是否乘以gamma输出，默认值false
-      // renderer.gammaOutput = true;
-
-      // renderer.physicallyCorrectLights = true;
-      // renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      // 色调映射的曝光级别。默认是1,曝光度值越大，图像亮度越高
-      // 可以尝试不同值去测试显示效果 比如0:看不到  0.1:很暗  200:过于亮，轮廓感不清楚
-      // renderer.toneMappingExposure = 1;
-
       renderer.outputEncoding = THREE.sRGBEncoding;
+      // 色调映射属性.toneMapping用于在普通计算机显示器或者移动设备屏幕等低动态范围介质上，模拟、逼近高动态范围(HDR)效果
       renderer.toneMapping = THREE.ReinhardToneMapping;
-      renderer.toneMappingExposure = 1;
+      renderer.toneMappingExposure = 1; // 曝光系数
 
       this.Renderer = renderer;
-
       element.appendChild(renderer.domElement);
     },
     setCamera() {
@@ -201,6 +207,8 @@ export default {
         Loader = new GLTFLoader();
       } else if ("fbx".indexOf(MTYPE) != -1) {
         Loader = new FBXLoader();
+      } else if ("obj".includes(MTYPE)) {
+        Loader = new OBJLoader();
       } else {
         loadTip.textContent = "请使用glb,gltf,fbx格式模型";
         return;
@@ -215,6 +223,13 @@ export default {
           //设置相机位置
           this.Camera.position.set(...MODEL.position);
           this.Model = "fbx".indexOf(MTYPE) != -1 ? geometry : geometry.scene;
+
+          // 测试Obj start
+          if ("obj".indexOf(MTYPE) != -1) {
+            this.Model = geometry;
+          }
+          // end
+
           //遍历模型字节点，获取相关参数设置
           this.Model.traverse(function (child) {
             if (child.isMesh) {
@@ -246,12 +261,20 @@ export default {
             this.AnimationMixer.clipAction(this.Model.animations[0]).play();
           }
 
+          // 测试Obj start
+          if ("obj".indexOf(MTYPE) != -1) {
+            this.Model.rotation.set(90, 180, 0);
+            this.Model.position.set(0, 0, 0);
+          }
+          // end
+
           //把模型放入场景中
           this.Scene.add(this.Model);
 
           // 加载成功后调整 展示的模型名称
           this.modelText.title = MODEL.name;
           console.log(this.Model, "model");
+
           //加载完成
           setTimeout(() => {
             loadTip.style.display = "none";
@@ -260,9 +283,9 @@ export default {
         },
         (xhr) => {
           //加载进度
-          // loadTip.textContent =
-          //   parseInt((xhr.loaded / xhr.total) * 100) + "%加载中...";
-          loadTip.textContent = "模型加载中...";
+          loadTip.textContent =
+            parseInt((xhr.loaded / xhr.total) * 100) + "%加载中...";
+          // loadTip.textContent = "模型加载中...";
           // console.log(xhr.loaded, xhr.total, xhr);
         },
         (err) => {
@@ -290,11 +313,16 @@ export default {
     //加载光源
     addLight: function () {
       this.Lights = [
-        { name: "AmbientLight", obj: new THREE.AmbientLight(0xffffff, 1.5) },
+        { name: "AmbientLight", obj: new THREE.AmbientLight(0xffffff, 0.7) },
         {
           name: "DirectionalLight",
           obj: new THREE.DirectionalLight(0xffffff, 1),
           position: [80, 100, 50],
+        },
+        {
+          name: "DirectionalLightTop",
+          obj: new THREE.DirectionalLight(0xffffff, 1),
+          position: [0, 15, 0],
         },
       ];
 
@@ -354,6 +382,10 @@ export default {
       element.appendChild(loadTip);
       return loadTip;
     },
+    /**
+     * 设置加载模型居中
+     * {Object} group 模型对象
+     */
     ModelAutoCenter(group) {
       /**
        * 包围盒全自动计算：模型整体居中
@@ -396,13 +428,15 @@ export default {
         box.max.y - box.min.y,
         box.max.z - box.min.z
       );
-      // console.log(maxDiameter, this.Camera.position.z);
+      console.log(
+        this.Camera.position.z / maxDiameter,
+        "this.Camera.position.z / maxDiameter"
+      );
       return this.Camera.position.z / maxDiameter;
     },
     //设置模型到适合观察的大小
     setScaleToFitSize(obj) {
-      console.log(this.getFitScaleValue(obj));
-      var scaleValue = this.getFitScaleValue(obj) * 0.5;
+      var scaleValue = this.getFitScaleValue(obj) * 0.42;
       // var scaleValue = this.getFitScaleValue(obj);
       obj.scale.set(scaleValue, scaleValue, scaleValue);
       return scaleValue;
@@ -412,14 +446,32 @@ export default {
       this.Controls.autoRotate = !this.Controls.autoRotate;
     },
   },
+  watch: {
+    $route: {
+      handler: function (val, oldVal) {
+        if (val.query.index) {
+          this.randomModel();
+        }
+      },
+      // 深度观察监听
+      deep: true,
+    },
+  },
   mounted() {
+    // const files = require
+    //   .context("@/assets/models", false, /\.jpg$/)
+    //   .keys()
+    //   .map((item) => item.slice(2));
     this.modelNames.forEach((item) => {
       this.models.push({
         name: item,
-        path: `static/models/${item}.fbx`,
+        path: `static/models/${item}.glb`,
         position:
           item.includes("碟") || item.includes("盘") ? [0, 2, 5] : [0, 0, 5],
-        type: "fbx",
+        // texture: files
+        //   .filter((fileName) => fileName.includes(item))
+        //   .map((name) => `@/assets/models/${name}`),
+        type: "glb",
       });
     });
 
@@ -437,6 +489,7 @@ export default {
   background-image: url("../assets/images/bg.jpg");
   background-repeat: no-repeat;
   background-size: cover;
+  cursor: grab;
 
   .title {
     position: absolute;
@@ -494,11 +547,6 @@ export default {
   .close {
     position: absolute;
     top: 5%;
-    right: 5%;
-  }
-  .select {
-    position: absolute;
-    top: 10%;
     right: 5%;
   }
 }

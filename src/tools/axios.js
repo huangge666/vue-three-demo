@@ -1,7 +1,6 @@
 import axios from "axios";
 import { Message, MessageBox, Loading } from "element-ui";
-import store from "../store";
-import { getToken } from "@/utils/auth";
+import { getToken } from "./auth";
 
 let loadingObj = null;
 let apiCount = 0;
@@ -14,7 +13,7 @@ let service = axios.create({
 // request拦截器
 service.interceptors.request.use(
   (config) => {
-    if (store.getters.token) {
+    if (getToken("token")) {
       config.headers = {
         Authorization: "Token " + getToken("token"), //携带权限参数
       };
@@ -47,7 +46,7 @@ service.interceptors.response.use(
      * code:200,接口正常返回;
      */
     const res = response.data;
-    if (res.code !== 0) {
+    if (res.code !== 200) {
       Message({
         message: res.message,
         type: "error",
@@ -69,8 +68,8 @@ service.interceptors.response.use(
       }
       return Promise.reject("error");
     } else {
-      // res.code === 0,正常返回数据
-      return response.data;
+      // res.code === 200,正常返回数据
+      return response.data?.data;
     }
   },
   (error) => {

@@ -16,10 +16,10 @@ export default {
 </script>
 
 <style lang="scss">
-ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  list-style-type: none;
+/*手机*/
+@media screen and (max-width: 600px) {
+  .el-message {
+    min-width: 250px;
+  }
 }
 </style>

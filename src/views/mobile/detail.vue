@@ -1,18 +1,12 @@
 <template>
   <div>
-    <div id="container"
-         class="three-container"
-         ref="three"
-         :style="{filter: (dialogVisible ? `blur(10px)`: ``)}">
+    <div id="mobile-container"
+         class="mobile-three-container"
+         ref="three">
       <template v-if="!params.noShowIcon">
         <div class="logo">
           <img src="@/assets/images/logo.png"
                alt="">
-        </div>
-        <div class="title">
-          <div class="content">
-            <div class="_title">{{dataInfo.name}}</div>
-          </div>
         </div>
         <div class="action"
              :class="[{help: dialogVisible}, {detail: showDetail}]">
@@ -27,7 +21,7 @@
           <img src="@/assets/images/help.png"
                class="help-icon"
                alt=""
-               @click="dialogVisible=true;">
+               @click="dialogVisible=!dialogVisible;">
           <img src="@/assets/images/mp3.png"
                class="play-icon"
                alt=""
@@ -39,36 +33,41 @@
                @click="close()">
         </div>
 
+        <!-- 文物详情 -->
         <template v-if="showDetail">
-          <div class="text-content">
-            <div class="title">
-              <div class="_title">{{dataInfo.name}}</div>
+          <div class="mobile-text-content">
+            <div class="content">
+              <div class="mobile-title">{{dataInfo.name}}</div>
+              <div class="mobile-sub-title">{{dataInfo.description}}</div>
             </div>
-            <div class="_sub-title">{{dataInfo.description}}</div>
+          </div>
+        </template>
+
+        <!-- 操作指引 -->
+        <template v-if="dialogVisible">
+          <div class="mobile-guide">
+            <div class="content">
+              <img src="@/assets/images/guide-1.png">
+              <img src="@/assets/images/guide-2.png">
+              <img src="@/assets/images/guide-3.png">
+            </div>
           </div>
         </template>
       </template>
     </div>
-    <Tutorial v-model="dialogVisible"></Tutorial>
   </div>
 </template>
 
 <script>
-import { getUrlParam } from "@/tools/utils.js";
-
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
-import Tutorial from "@/components/tutorial/index.vue";
-
 export default {
   name: "Home",
-  components: {
-    Tutorial,
-  },
+  components: {},
   data() {
     return {
       Scene: null,
@@ -87,12 +86,19 @@ export default {
       loadingCount: 0,
       dataInfo: {},
       params: {},
-      showDetail: true,
+      showDetail: false,
       audio: new Audio(),
       playState: false,
       // 假进度条
       progress: 0,
     };
+  },
+  beforeDestroy() {
+    if (this.playState) {
+      this.audio.pause();
+      this.playState = false;
+    }
+    this.audio = null;
   },
   methods: {
     playMp3() {
@@ -116,7 +122,6 @@ export default {
       this.showDetail = !this.showDetail;
     },
     async getDataInfo() {
-      // getUrlParam("index");
       if (!this.params.id) {
         this.$message.warning("请输入对应的模型编号");
         return;
@@ -137,12 +142,16 @@ export default {
       this.modelLoader(temp);
       this.dataInfo = { ...result };
       this.audio.src = result.voice ? result.voice[0] : "";
-      // this.audio.src = "http://m10.music.126.net/20220510095345/b4935ea748ddd504488808caeb4e0953/ymusic/0f5b/555f/055a/8134a76461b57ed37b8020542f3f0d5c.mp3";
+      this.audio.onended = () => {
+        this.playState = false;
+        this.$notify({
+          message: "播放结束",
+          showClose: false,
+        });
+      };
     },
     close() {
-      this.$message.success("关闭");
-      window.opener = null;
-      window.close();
+      this.$router.back();
     },
     async init() {
       this.setScene();
@@ -170,7 +179,7 @@ export default {
       // scene.add(axis);
     },
     setRenderer() {
-      const element = document.getElementById("container");
+      const element = document.getElementById("mobile-container");
 
       const renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -314,16 +323,11 @@ export default {
     //加载光源
     addLight: function () {
       this.Lights = [
-        { name: "AmbientLight", obj: new THREE.AmbientLight(0xffffff, 0.7) },
+        { name: "AmbientLight", obj: new THREE.AmbientLight(0xffffff, 1) },
         {
           name: "DirectionalLight",
           obj: new THREE.DirectionalLight(0xffffff, 1),
           position: [80, 100, 50],
-        },
-        {
-          name: "DirectionalLightTop",
-          obj: new THREE.DirectionalLight(0xffffff, 1),
-          position: [0, 15, 0],
         },
       ];
 
@@ -373,7 +377,7 @@ export default {
     },
     //添加加载进度
     addLoadTip() {
-      const element = document.getElementById("container");
+      const element = document.getElementById("mobile-container");
       document.querySelector(".loadTip") &&
         element.removeChild(document.querySelector(".loadTip"));
       let loadTip = document.createElement("div");
@@ -437,7 +441,7 @@ export default {
     },
     //设置模型到适合观察的大小
     setScaleToFitSize(obj) {
-      var scaleValue = this.getFitScaleValue(obj) * 0.42;
+      var scaleValue = this.getFitScaleValue(obj) * 0.4;
       // var scaleValue = this.getFitScaleValue(obj);
       obj.scale.set(scaleValue, scaleValue, scaleValue);
       return scaleValue;
@@ -447,22 +451,6 @@ export default {
       this.Controls.autoRotate = !this.Controls.autoRotate;
     },
   },
-  watch: {
-    // $route: {
-    //   handler: function (val, oldVal) {
-    //     if (val.query.id) {
-    //       this.params = {
-    //         id: val.query.id,
-    //         noShowIcon: val.query?.noShowIcon,
-    //       };
-    //       this.getDataInfo();
-    //     }
-    //   },
-    //   // 深度观察监听
-    //   deep: true,
-    //   immediate: true,
-    // },
-  },
   mounted() {
     this.init();
     window.onresize = () => this.onWindowResize();
@@ -471,13 +459,11 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-#container {
+#mobile-container {
   position: absolute;
   width: 100%;
   height: 100%;
-  background-image: url("../assets/images/bg.jpg");
-  background-repeat: no-repeat;
-  background-size: cover;
+  background: linear-gradient(-38deg, #c28a57 0%, #ffedad 100%);
 
   ::v-deep canvas {
     cursor: grab;
@@ -513,8 +499,12 @@ export default {
 
   .logo {
     position: absolute;
-    top: 7%;
+    top: 5%;
     left: 5%;
+    img {
+      width: 316px;
+      height: 60px;
+    }
   }
   .action {
     z-index: 3;
@@ -522,7 +512,21 @@ export default {
     bottom: 4%;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
 
+    &.help {
+      img {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      .help-icon {
+        opacity: 1;
+        cursor: pointer;
+        pointer-events: auto;
+      }
+    }
     &.detail {
       img {
         opacity: 0.4;
@@ -540,8 +544,8 @@ export default {
 
     img {
       cursor: pointer;
-      width: 94px;
-      height: 94px;
+      width: 108px;
+      height: 108px;
       background-size: cover;
     }
     img + img {
@@ -549,19 +553,21 @@ export default {
     }
   }
 
-  .help {
-    position: absolute;
-    bottom: 5%;
-    right: 5%;
-  }
-
   .close {
     position: absolute;
     top: 5%;
     right: 5%;
+    width: 37px;
+    height: 41px;
+
+    img {
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+    }
   }
 
-  .text-content {
+  .mobile-text-content {
     position: absolute;
     left: 0;
     right: 0;
@@ -569,40 +575,63 @@ export default {
     bottom: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.7);
 
-    .title {
-      position: absolute;
-      top: 7%;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-      width: 100%;
-      color: #ffffff;
-
-      ._title {
-        width: 60%;
-        margin: auto;
-        font-size: 36px;
-        margin-bottom: 20px;
-        letter-spacing: 2px;
-      }
+    .content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 80px;
+      height: 100%;
     }
 
-    ._sub-title {
-      width: 80%;
-      margin: auto;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+    .mobile-title {
+      text-align: center;
+      color: #ffffff;
+      font-size: 24px;
+      letter-spacing: 2px;
+    }
+
+    .mobile-sub-title {
+      margin-top: 55px;
       text-align: left;
-      font-size: 20px;
-      line-height: 1.5;
-      margin-bottom: 10px;
+      font-size: 14px;
+      line-height: 1.8;
       letter-spacing: 4px;
       color: #ffffff;
       text-indent: 2em;
+      max-height: 676px;
+      overflow: hidden;
+      overflow-y: auto;
+    }
+  }
+
+  .mobile-guide {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+
+    .content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    img {
+      width: 193px;
+      height: 157px;
+      background-size: cover;
+
+      & + img {
+        margin-top: 95px;
+      }
     }
   }
 }

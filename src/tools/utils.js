@@ -1,7 +1,3 @@
-export const add = (a, b) => {
-  return a + b;
-};
-
 /**
  * 一个值如果是null或者''返回-
  * @param value 需要处理的值
