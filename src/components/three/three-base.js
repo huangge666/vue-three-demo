@@ -21,8 +21,8 @@ export default class ThreeBase {
     this.renderer = null; // 渲染器
     this.controls = null; // 控制器
     this.model = null; // 模型
+    this.pointLight = null; // 自动追随光
     this.init();
-    this.pointLight = null;
   }
   // 初始化
   init () {
@@ -42,6 +42,10 @@ export default class ThreeBase {
     // 加载模型
     if (this.opt.modelUrl) {
       this.loadModel(this.opt.modelUrl);
+      // 点光源
+      this.pointLight = new THREE.PointLight(0xffffff, .8);
+      this.pointLight.position.set(0, 0, 100);
+      this.scene.add(this.pointLight);
     }
     // 响应窗口大小改变
     if (this.opt.isFullBrowser) {
@@ -128,10 +132,8 @@ export default class ThreeBase {
     });
 
     if (this.pointLight) {
-      console.log(this.pointLight, "this.pointLight");
       const vector = this.camera.position.clone();
       this.pointLight.position.set(vector.x, vector.y, vector.z);
-      console.log(vector, "vector");
     }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
