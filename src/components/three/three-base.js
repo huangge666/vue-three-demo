@@ -22,9 +22,10 @@ export default class ThreeBase {
     this.controls = null; // 控制器
     this.model = null; // 模型
     this.init();
+    this.pointLight = null;
   }
   // 初始化
-  init() {
+  init () {
     this.sceneInit();
     this.cameraInit();
     this.renderInit();
@@ -48,8 +49,13 @@ export default class ThreeBase {
     }
   }
   // 场景初始化
-  sceneInit() {
+  sceneInit () {
     this.scene = new THREE.Scene();
+
+    const point = new THREE.PointLight(0xffffff, .8);
+    point.position.set(20, 32, -20);
+    this.pointLight = point;
+    this.scene.add(this.pointLight);
     // 环境光
     // let ambient = new THREE.AmbientLight(0xffffff);
     // this.scene.add(ambient);
@@ -62,7 +68,7 @@ export default class ThreeBase {
     });
   }
   // 相机初始化
-  cameraInit() {
+  cameraInit () {
     this.camera = new THREE.PerspectiveCamera(
       70, // 摄像机视锥体垂直视野角度
       this.getWidth() / this.getHeight(), // 摄像机视锥体长宽比
@@ -72,7 +78,7 @@ export default class ThreeBase {
     this.camera.position.set(0, 2, 5);
   }
   // 渲染器初始化
-  renderInit() {
+  renderInit () {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true, // 抗锯齿
       alpha: true, // canvas是否包含alpha
@@ -82,18 +88,21 @@ export default class ThreeBase {
     this.dom.appendChild(this.renderer.domElement);
   }
   // 控制器初始化
-  controlsInit() {
+  controlsInit () {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.autoRotateSpeed = 1.0; // 自动旋转速度
     this.controls.autoRotate = this.autoRotate; // 是否自动转动
+    // 禁止旋转到底部
+    // this.controls.minPolarAngle = (Math.PI*1)/6
+    // this.controls.maxPolarAngle = (Math.PI*3)/6
     this.controls.enableDamping = true; // 是否惯性滑动
     this.controls.dampingFactor = 0.2;
-    this.controls.rotateSpeed = 0.25; // 手动旋转速度
+    this.controls.rotateSpeed = 0.75; // 手动旋转速度
     this.controlsRotate(this.opt.autoRotate);
     this.controls.update();
   }
   // 控制器旋转
-  controlsRotate(autoRotate) {
+  controlsRotate (autoRotate) {
     this.controls.autoRotate = autoRotate || false;
     if (autoRotate) {
       // 停止操作3s后继续自动转动
@@ -113,15 +122,22 @@ export default class ThreeBase {
     }
   }
   // 动画渲染
-  animate() {
+  animate () {
     requestAnimationFrame(() => {
       this.animate();
     });
+
+    if (this.pointLight) {
+      console.log(this.pointLight, "this.pointLight");
+      const vector = this.camera.position.clone();
+      this.pointLight.position.set(vector.x, vector.y, vector.z);
+      console.log(vector, "vector");
+    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
   // 加载场景
-  loadScene(url) {
+  loadScene (url) {
     if (/\.hdr$/i.test(url)) {
       new RGBELoader().load(url, (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
@@ -139,7 +155,7 @@ export default class ThreeBase {
     }
   }
   // 加载模型
-  loadModel(url) {
+  loadModel (url) {
     const loadTip = this.addLoadTip();
     if (/\.gltf$/i.test(url)) {
       // GLTF模型加载
@@ -226,7 +242,7 @@ export default class ThreeBase {
     }
   }
   // 根据模型调整相机position
-  adjustModel(model) {
+  adjustModel (model) {
     // model.updateMatrixWorld();
     let box3 = new THREE.Box3().setFromObject(model);
     let vector3 = new THREE.Vector3();
@@ -240,24 +256,24 @@ export default class ThreeBase {
     this.ModelAutoCenter(model);
   }
   // 响应窗口大小
-  onWindowResize() {
+  onWindowResize () {
     this.camera.aspect = this.getWidth() / this.getHeight();
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(this.getWidth(), this.getHeight());
   }
   // 获取宽度
-  getWidth() {
+  getWidth () {
     return this.opt.isFullBrowser ? window.innerWidth : this.dom.offsetWidth;
   }
   // 获取高度
-  getHeight() {
+  getHeight () {
     return this.opt.isFullBrowser ? window.innerHeight : this.dom.offsetHeight;
   }
   /**
    * 设置加载模型居中
    * {Object} group 模型对象
    */
-  ModelAutoCenter(group) {
+  ModelAutoCenter (group) {
     /**
      * 包围盒全自动计算：模型整体居中
      */
@@ -276,7 +292,7 @@ export default class ThreeBase {
     group.position.z = group.position.z - center.z;
   }
   //获取模型适合观察的缩放的比例
-  getFitScaleValue(obj) {
+  getFitScaleValue (obj) {
     var boxHelper = new THREE.BoxHelper(obj);
     boxHelper.geometry.computeBoundingBox();
     var box = boxHelper.geometry.boundingBox;
@@ -285,14 +301,14 @@ export default class ThreeBase {
     return this.camera.position.z / maxDiameter;
   }
   //设置模型到适合观察的大小
-  setScaleToFitSize(obj) {
+  setScaleToFitSize (obj) {
     var scaleValue = this.getFitScaleValue(obj) * 0.5;
     // var scaleValue = this.getFitScaleValue(obj);
     obj.scale.set(scaleValue, scaleValue, scaleValue);
     return scaleValue;
   }
   //添加加载进度
-  addLoadTip() {
+  addLoadTip () {
     const element = document.querySelector("body");
     document.querySelector(".loadTip") && element.removeChild(document.querySelector(".loadTip"));
     let loadTip = document.createElement("div");

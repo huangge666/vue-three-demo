@@ -302,28 +302,6 @@ export default {
       obj.scale.set(scaleValue, scaleValue, scaleValue);
       return scaleValue;
     },
-    /**
-     * 设置加载模型居中
-     * {Object} group 模型对象
-     */
-    ModelAutoCenter(group) {
-      /**
-       * 包围盒全自动计算：模型整体居中
-       */
-      var box3 = new Box3();
-      // 计算层级模型group的包围盒
-      // 模型group是加载一个三维模型返回的对象，包含多个网格模型
-      box3.expandByObject(group);
-      // 计算一个层级模型对应包围盒的几何体中心在世界坐标中的位置
-      var center = new Vector3();
-      box3.getCenter(center);
-      // console.log('查看几何体中心坐标', center);
-
-      // 重新设置模型的位置，使之居中。
-      group.position.x = group.position.x - center.x;
-      group.position.y = group.position.y - center.y;
-      group.position.z = group.position.z - center.z;
-    },
     onResize() {
       if (this.width === undefined || this.height === undefined) {
         this.$nextTick(() => {
@@ -390,12 +368,9 @@ export default {
       const { rotation } = this;
       const { scale } = this;
 
-      this.setScaleToFitSize(object);
-      this.ModelAutoCenter(object);
-
-      // object.position.set(position.x, position.y, position.z);
-      // object.rotation.set(rotation.x, rotation.y, rotation.z);
-      // object.scale.set(scale.x, scale.y, scale.z);
+      object.position.set(position.x, position.y, position.z);
+      object.rotation.set(rotation.x, rotation.y, rotation.z);
+      object.scale.set(scale.x, scale.y, scale.z);
     },
     updateRenderer() {
       const { renderer } = this;
@@ -577,6 +552,8 @@ export default {
 
       this.updateCamera();
       this.updateModel();
+
+      this.setScaleToFitSize(object);
     },
     animate() {
       this.reqId = requestAnimationFrame(this.animate);

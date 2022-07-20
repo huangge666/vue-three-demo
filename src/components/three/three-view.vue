@@ -61,6 +61,7 @@ export default {
     },
   },
   mounted() {
+    console.log(this.lights, "lights");
     this.threeView = new ThreeBase(this.$el, {
       sceneUrl: this.sceneUrl,
       modelUrl: this.modelUrl,
