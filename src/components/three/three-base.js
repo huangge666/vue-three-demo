@@ -14,6 +14,8 @@ export default class ThreeBase {
       modelUrl: "", // 模型url
       autoRotate: false, // 是否自动旋转
       isFullBrowser: true, // 生成的canvas是否铺满浏览器
+      isEnableZoom: true, // 是否允许缩放
+      isEnablePan: true, // 是否允许平移
       ...options,
     };
     this.scene = null; // 场景
@@ -21,8 +23,8 @@ export default class ThreeBase {
     this.renderer = null; // 渲染器
     this.controls = null; // 控制器
     this.model = null; // 模型
-    this.init();
     this.pointLight = null;
+    this.init();
   }
   // 初始化
   init () {
@@ -92,6 +94,8 @@ export default class ThreeBase {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.autoRotateSpeed = 1.0; // 自动旋转速度
     this.controls.autoRotate = this.autoRotate; // 是否自动转动
+    this.controls.enableZoom = this.opt.isEnableZoom;
+    this.controls.enablePan = this.opt.isEnablePan;
     // 禁止旋转到底部
     // this.controls.minPolarAngle = (Math.PI*1)/6
     // this.controls.maxPolarAngle = (Math.PI*3)/6
