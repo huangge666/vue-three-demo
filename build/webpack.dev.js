@@ -2,30 +2,37 @@ const { merge } = require("webpack-merge");
 const base = require("./webpack.base");
 const webpack = require("webpack");
 const FriendlyErrorsWebpackPlugin = require("friendly-errors-webpack-plugin");
+const chalk = require("chalk");
 
-const os = require("os");
-function getNetworkIp() {
-  let needHost = ""; // 打开的host
-  try {
-    // 获得网络接口列表
-    let network = os.networkInterfaces();
-    for (let dev in network) {
-      let iface = network[dev];
-      for (let i = 0; i < iface.length; i++) {
-        let alias = iface[i];
-        if (alias.family === "IPv4" && alias.address !== "127.0.0.1" && !alias.internal) {
-          needHost = alias.address;
-        }
+const POST = 8889;
+
+// 取本机IP地址
+const getIPAdress = () => {
+  var interfaces = require("os").networkInterfaces();
+  for (var devName in interfaces) {
+    var iface = interfaces[devName];
+    for (var i = 0; i < iface.length; i++) {
+      var alias = iface[i];
+      if (
+        alias.family === "IPv4" &&
+        alias.address !== "127.0.0.1" &&
+        !alias.internal
+      ) {
+        conlg.push(
+          chalk.blueBright.bold("Your application is running here: ") +
+            chalk.greenBright.bold(`http://${alias.address}:${port}/`)
+        );
       }
     }
-  } catch (e) {
-    needHost = "localhost";
   }
-  return needHost;
-}
+};
 
-const HOST = getNetworkIp();
-const POST = 8889;
+let conlg = [];
+getIPAdress();
+conlg.push(
+  chalk.blueBright.bold("Your application is running here: ") +
+    chalk.greenBright.bold(`http://localhost:${port}/`)
+);
 
 module.exports = merge(base, {
   mode: "development",
@@ -43,15 +50,17 @@ module.exports = merge(base, {
     new webpack.HotModuleReplacementPlugin(),
     new FriendlyErrorsWebpackPlugin({
       compilationSuccessInfo: {
-        messages: [`Your application is running here: http://${HOST}:${POST}`],
+        messages: conlg,
       },
     }),
   ],
   stats: "errors-only",
   devServer: {
-    host: HOST,
+    host: "0.0.0.0",
     port: POST,
     open: false,
     hot: true,
+    // 设置代理，用来解决本地开发跨域问题，如果设置了代理，那你本地开发环境的axios的baseUrl要写为 '' ，即空字符串
+    proxy: {},
   },
 });
